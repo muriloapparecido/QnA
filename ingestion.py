@@ -10,11 +10,11 @@ chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection(name="repo")
 
 
-SUPPORTED_EXTENSIONS = {".ts", ".java", ".py", ".js", ".md"}
-SKIP_DIRS = {"node_modules", ".git", "build", "dist"}
+SUPPORTED_EXTENSIONS = {".ts", ".tsx", ".java", ".py", ".js", ".md"}
+SKIP_DIRS = {"node_modules", ".git", "build", "dist", "frontend_license"}
 
 # Chunking function
-def chunk_file(source: str, chunk_size: int = 40, overlap: int = 10) -> list[dict]:
+def chunk_file(source: str, chunk_size: int = 40, overlap: int = 20) -> list[dict]:
     # returns list of {"text": ..., "start_line": ..., "end_line": ...}
     lines = source.splitlines()
     result = []
@@ -70,15 +70,18 @@ ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in
 metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
 
 # Upsert to ChromaDB
-collection.upsert(
-    ids=ids,
-    metadatas=metadata,
-    documents=docs
-)
+BATCH_SIZE = 500
+
+for i in range(0, len(docs), BATCH_SIZE):
+    collection.upsert(
+        ids=ids[i:i+BATCH_SIZE],
+        metadatas=metadata[i:i+BATCH_SIZE],
+        documents=docs[i:i+BATCH_SIZE]
+    )
         
 results = collection.query(
     query_texts=["How are columns created in the database?"],
-    n_results=5
+    n_results=10
 )
 
 print(results)
