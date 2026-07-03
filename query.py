@@ -98,7 +98,7 @@ while True:
     attach a score that increases when either semantic or keyword match in that chunk
     display results in reverse order so highest scores first
     ''' 
-    result = merge_matches_and_chunks(matched_keywords, sources)    
+    results = merge_matches_and_chunks(matched_keywords, sources)    
    
     # print("All retrieved chunks:")
     # for i in range(len(sources['metadatas'][0])):
@@ -110,9 +110,9 @@ while True:
     
     # Format result
     source = ""
-    for i  in range(len(sources['metadatas'][0])):
-        meta = sources["metadatas"][0][i]
-        text = sources["documents"][0][i]
+    for key, value in results:
+        meta = value['metadatas']
+        text = value['text']
         source += f"File: {meta['file']} (lines {meta['start_line']}-{meta['end_line']})\n{text}\n\n"
     
 
