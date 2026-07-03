@@ -41,8 +41,12 @@ def walk_repo(repo_path: str) -> list[dict]:
         # root = current folder path (string)
         # dirs = list of subfolder names in root
         # files = list of file names in root
-        dirs[:] = [d for d in dirs if d not in {"node_modules", ".git", "build", "dist"}]
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        if "file" in root: 
+            print(f"root: {root}, dirs: {dirs}, files: {files}")
         for file in files:
+            # print(f"Checking: {file}, endswith check: {file.endswith(tuple(SUPPORTED_EXTENSIONS))}")
+
             # skip if file extension is not supported
             if not file.endswith(tuple(SUPPORTED_EXTENSIONS)):
                 continue
@@ -52,11 +56,16 @@ def walk_repo(repo_path: str) -> list[dict]:
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     source = f.read()
-            except (UnicodeDecodeError, PermissionError):
+                    print(f"Read {len(source)} chars from {full_path}") 
+
+            except (UnicodeDecodeError, PermissionError) as e:
+                print(f"SKIPPED: {full_path} - {e}")
                 continue
             
             # chunk file
             chunks = chunk_file(source)
+            print(f"Chunked {full_path} into {len(chunks)} chunks")
+
 
             for chunk in chunks:
                 chunk["file"] = full_path  # add file path to each chunk
@@ -65,6 +74,9 @@ def walk_repo(repo_path: str) -> list[dict]:
 
 # Ingest data
 all_chunks = walk_repo("../MAPS")
+file_view_chunks = [c for c in all_chunks if "file-view" in c["file"]]
+print(f"file-view chunks in all_chunks: {len(file_view_chunks)}")
+print(f"Total chunks: {len(all_chunks)}")
 docs = [chunk["text"] for chunk in all_chunks]
 ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
 metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
@@ -72,16 +84,16 @@ metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line
 # Upsert to ChromaDB
 BATCH_SIZE = 500
 
+print(f"Total chunks to upsert: {len(docs)}")
 for i in range(0, len(docs), BATCH_SIZE):
-    collection.upsert(
-        ids=ids[i:i+BATCH_SIZE],
-        metadatas=metadata[i:i+BATCH_SIZE],
-        documents=docs[i:i+BATCH_SIZE]
-    )
-        
-results = collection.query(
-    query_texts=["How are columns created in the database?"],
-    n_results=10
-)
-
-print(results)
+    print(f"Upserting batch {i} to {i+BATCH_SIZE}")
+    try: 
+        collection.upsert(
+            ids=ids[i:i+BATCH_SIZE],
+            metadatas=metadata[i:i+BATCH_SIZE],
+            documents=docs[i:i+BATCH_SIZE]
+        )
+        print(f"Batch {i} done")
+    except Exception as e: 
+        print(f"FAILED bat {i}: {e}")
+print(collection.count())
