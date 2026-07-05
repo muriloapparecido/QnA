@@ -11,7 +11,7 @@ collection = chroma_client.get_or_create_collection(name="repo")
 
 
 SUPPORTED_EXTENSIONS = {".ts", ".tsx", ".java", ".py", ".js", ".md"}
-SKIP_DIRS = {"node_modules", ".git", "build", "dist", "frontend_license"}
+SKIP_DIRS = {"node_modules", ".git", "build", "dist", "frontend_license", "venv", "target", "docker-compose", "docs"}
 
 # Chunking function
 def chunk_file(source: str, chunk_size: int = 40, overlap: int = 20) -> list[dict]:
@@ -42,8 +42,8 @@ def walk_repo(repo_path: str) -> list[dict]:
         # dirs = list of subfolder names in root
         # files = list of file names in root
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
-        if "file" in root: 
-            print(f"root: {root}, dirs: {dirs}, files: {files}")
+        # if "file" in root: 
+        #     print(f"root: {root}, dirs: {dirs}, files: {files}")
         for file in files:
             # print(f"Checking: {file}, endswith check: {file.endswith(tuple(SUPPORTED_EXTENSIONS))}")
 
@@ -56,7 +56,7 @@ def walk_repo(repo_path: str) -> list[dict]:
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     source = f.read()
-                    print(f"Read {len(source)} chars from {full_path}") 
+                    # print(f"Read {len(source)} chars from {full_path}") 
 
             except (UnicodeDecodeError, PermissionError) as e:
                 print(f"SKIPPED: {full_path} - {e}")
@@ -64,7 +64,7 @@ def walk_repo(repo_path: str) -> list[dict]:
             
             # chunk file
             chunks = chunk_file(source)
-            print(f"Chunked {full_path} into {len(chunks)} chunks")
+            # print(f"Chunked {full_path} into {len(chunks)} chunks")
 
 
             for chunk in chunks:
@@ -73,7 +73,7 @@ def walk_repo(repo_path: str) -> list[dict]:
     return data 
 
 # Ingest data
-all_chunks = walk_repo("../MAPS")
+all_chunks = walk_repo("../../MAPS")
 file_view_chunks = [c for c in all_chunks if "file-view" in c["file"]]
 print(f"file-view chunks in all_chunks: {len(file_view_chunks)}")
 print(f"Total chunks: {len(all_chunks)}")
@@ -86,14 +86,14 @@ BATCH_SIZE = 500
 
 print(f"Total chunks to upsert: {len(docs)}")
 for i in range(0, len(docs), BATCH_SIZE):
-    print(f"Upserting batch {i} to {i+BATCH_SIZE}")
+    # print(f"Upserting batch {i} to {i+BATCH_SIZE}")
     try: 
         collection.upsert(
             ids=ids[i:i+BATCH_SIZE],
             metadatas=metadata[i:i+BATCH_SIZE],
             documents=docs[i:i+BATCH_SIZE]
         )
-        print(f"Batch {i} done")
+        # print(f"Batch {i} done")
     except Exception as e: 
         print(f"FAILED bat {i}: {e}")
-print(collection.count())
+# print(collection.count())

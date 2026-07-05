@@ -5,7 +5,9 @@ import os
 from openai import OpenAI
 import os
 import chromadb
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from fastapi import FastAPI
+from pydantic import BaseModel
+
 
 # Identify if any word is Camel case 
 def is_code_identifier(word: str) -> bool:
@@ -54,18 +56,28 @@ def merge_matches_and_chunks(keyword_matches: list[dict], sources: dict) -> list
     
     return sorted_scores
 
+# instance of chroma client to get collection from ingestion
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 collection = chroma_client.get_or_create_collection(name="repo")
 
+# instance to query openai
 client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY"),
 )
 
-print("What would you like to ask?")
-chat_completion = None
-while True:
-    
-    input_text = input()
+# instance of api
+app = FastAPI()
+
+# request body
+class QuestionRequest(BaseModel):
+    question: str
+
+
+# answer user's query
+@app.post("/ask")
+def ask(request: QuestionRequest) :
+    chat_completion = None
+    input_text = request.question
     real_input_text = client.chat.completions.create(
         messages=[
             {
@@ -99,7 +111,7 @@ while True:
     display results in reverse order so highest scores first
     ''' 
     results = merge_matches_and_chunks(matched_keywords, sources)    
-   
+
     # print("All retrieved chunks:")
     # for i in range(len(sources['metadatas'][0])):
     #     print(sources['metadatas'][0][i])
@@ -131,13 +143,10 @@ while True:
     )
     
     # Agent response
-    print(chat_completion.choices[0].message.content)
+    return {"Response": chat_completion.choices[0].message.content, "Source": source}
+
+    # print(chat_completion.choices[0].message.content)
     
-    print("Any further questions? (Type 'exit' or 'quit' to stop.)")
-    if input_text.lower() in {"exit", "quit"}:
-        break
-
-
-
-
-
+    # print("Any further questions? (Type 'exit' or 'quit' to stop.)")
+    # if input_text.lower() in {"exit", "quit"}:
+    #     break
