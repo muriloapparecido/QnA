@@ -4,9 +4,11 @@ load_dotenv()
 import os
 from openai import OpenAI
 import os
-import chromadb
 from fastapi import FastAPI
 from pydantic import BaseModel
+from ingestion import ingest_repo, collection
+from fastapi.middleware.cors import CORSMiddleware
+
 
 
 # Identify if any word is Camel case 
@@ -56,9 +58,6 @@ def merge_matches_and_chunks(keyword_matches: list[dict], sources: dict) -> list
     
     return sorted_scores
 
-# instance of chroma client to get collection from ingestion
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
-collection = chroma_client.get_or_create_collection(name="repo")
 
 # instance to query openai
 client = OpenAI(
@@ -67,6 +66,22 @@ client = OpenAI(
 
 # instance of api
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class IngestRequest(BaseModel): 
+    repo_path: str
+    
+@app.post("/ingest")
+def ingest(request:IngestRequest):
+    result = ingest_repo(request.repo_path)
+    return result
 
 # request body
 class QuestionRequest(BaseModel):

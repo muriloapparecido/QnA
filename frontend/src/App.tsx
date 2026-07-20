@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+//  Types 
 
 interface Message {
   id: number
@@ -17,13 +17,13 @@ interface Repository {
   messages: Message[]
 }
 
-// ─── Mock data (replace with real data later) ────────────────────────────────
+//  Mock data (replace with real data later) 
 
 const INITIAL_REPOS: Repository[] = [
   { id: 'maps', name: 'MAPS', path: '../../MAPS', messages: [] },
 ]
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+//  Sub-components 
 
 function Sidebar({
   repos,
@@ -31,12 +31,16 @@ function Sidebar({
   collapsed,
   onSelect,
   onToggle,
+  onIngest, 
+  ingesting
 }: {
   repos: Repository[]
   activeId: string
   collapsed: boolean
   onSelect: (id: string) => void
   onToggle: () => void
+  onIngest: (path:string) => void
+  ingesting: boolean
 }) {
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
@@ -57,7 +61,18 @@ function Sidebar({
             >
               <span className="repo-item__icon">⬡</span>
               <span className="repo-item__name">{repo.name}</span>
+              <button
+                className="repo-item__ingest"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onIngest(repo.path)
+                }}
+                title="Re-ingest repo"
+              >
+                {ingesting ? '⟳' : '↺'}
+              </button>
             </button>
+            
           ))}
         </nav>
       )}
@@ -151,20 +166,35 @@ function SettingsPanel({
   )
 }
 
-// ─── Main App ─────────────────────────────────────────────────────────────────
+//  Main App 
 
 export default function App() {
   const [repos, setRepos] = useState<Repository[]>(INITIAL_REPOS)
   const [activeRepoId, setActiveRepoId] = useState<string>(INITIAL_REPOS[0].id)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [ignoredExtensions, setIgnoredExtensions] = useState<string[]>(['svg', 'png', 'jpg', 'webp'])
-  const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [ignoredExtensions, setIgnoredExtensions] = useState<string[]>(['svg', 'png', 'jpg', 'webp']);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [ingesting, setIngesting] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const activeRepo = repos.find((r) => r.id === activeRepoId)!
+
+
+  async function handleIngest(repoPath: string) {
+    setIngesting(true)
+    try {
+      await fetch('http://localhost:8000/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ repo_path: repoPath })
+      })
+    } finally {
+      setIngesting(false)
+    }
+  }
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -233,6 +263,8 @@ export default function App() {
         collapsed={sidebarCollapsed}
         onSelect={setActiveRepoId}
         onToggle={() => setSidebarCollapsed((v) => !v)}
+        onIngest={() => handleIngest("../../MAPS")}
+        ingesting={ingesting}
       />
 
       {/* Main chat area */}
