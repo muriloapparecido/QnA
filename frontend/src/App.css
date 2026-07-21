@@ -93,7 +93,6 @@ html, body, #root {
   width: 100%;
   font-family: var(--font-ui);
   font-size: 13px;
-  transition: background 0.15s, color 0.15s;
   white-space: nowrap;
 }
 
@@ -110,6 +109,28 @@ html, body, #root {
 .repo-item__icon {
   font-size: 12px;
   flex-shrink: 0;
+}
+
+.repo-item__ingest {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.repo-item:hover .repo-item__ingest {
+  opacity: 1;
+}
+
+.repo-item__ingest:hover {
+  color: var(--accent);
 }
 
 /*  Chat  */
