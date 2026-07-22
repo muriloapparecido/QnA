@@ -1,6 +1,5 @@
 import chromadb
 import os
-from itertools import islice
 
 
 # Create client
@@ -96,3 +95,28 @@ def ingest_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs:
             print(f"FAILED bat {i}: {e}")
     print(collection.count())
     return {"chunks_ingested": len(docs)}
+
+def ingest_repo_stream(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []):
+    """Generator version that yields progress dicts instead of returning at the end."""
+    all_chunks = walk_repo(repo_path, supported_extensions, skip_dirs)
+    total = len(all_chunks)
+    
+    if total == 0:
+        yield {"status": "error", "message": "No files found. Check your path and supported extensions."}
+        return
+
+    docs = [chunk["text"] for chunk in all_chunks]
+    ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
+    metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
+
+    BATCH_SIZE = 500
+    for i in range(0, total, BATCH_SIZE):
+        collection.upsert(
+            ids=ids[i:i+BATCH_SIZE],
+            metadatas=metadata[i:i+BATCH_SIZE],
+            documents=docs[i:i+BATCH_SIZE]
+        )
+        ingested = min(i + BATCH_SIZE, total)
+        yield {"status": "progress", "ingested": ingested, "total": total, "percent": round((ingested / total) * 100)}
+
+    yield {"status": "done", "total": total}

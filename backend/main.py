@@ -6,8 +6,10 @@ from openai import OpenAI
 import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-from ingestion import ingest_repo, collection
+from ingestion import ingest_repo, collection, ingest_repo_stream
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+import json
 
 
 
@@ -86,6 +88,15 @@ def ingest(request:IngestRequest):
     count = ingest_repo(request.repo_path, request.supported_extensions, request.skip_dirs)
 
     return count
+
+@app.post("/ingest-stream")
+def ingest_stream(request: IngestRequest):
+    def generate():
+        # count total files first
+        for update in ingest_repo_stream(request.repo_path, request.supported_extensions, request.skip_dirs):
+            yield f"data: {json.dumps(update)}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 # request body
 class QuestionRequest(BaseModel):
