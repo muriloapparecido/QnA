@@ -133,6 +133,58 @@ html, body, #root {
   color: var(--accent);
 }
 
+.repo-item__delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.repo-item:hover .repo-item__delete {
+  opacity: 1;
+}
+
+.repo-item__delete:hover {
+  color: var(--error);
+}
+
+.add-repo-form {
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.add-repo-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.add-repo-btn {
+  margin: 6px;
+  padding: 6px 10px;
+  background: none;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  width: calc(100% - 12px);
+  text-align: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.add-repo-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /*  Chat  */
 
 .chat {

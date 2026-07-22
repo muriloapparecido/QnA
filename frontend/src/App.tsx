@@ -32,7 +32,9 @@ function Sidebar({
   onSelect,
   onToggle,
   onIngest, 
-  ingesting
+  ingesting, 
+  onAddRepo,
+  onDelete,
 }: {
   repos: Repository[]
   activeId: string
@@ -41,7 +43,27 @@ function Sidebar({
   onToggle: () => void
   onIngest: (path:string) => void
   ingesting: boolean
+  onAddRepo: (repo: Repository) => void
+  onDelete: (id: string) => void
 }) {
+
+  const [addingRepo, setAddingRepo] = useState(false)
+  const [newRepoPath, setNewRepoPath] = useState('')
+  const [newRepoName, setNewRepoName] = useState('')
+
+  function handleAddRepo() {
+    if (!newRepoPath.trim()) return
+    const name = newRepoName.trim() || newRepoPath.split('/').pop() || 'Repo'
+    onAddRepo({ 
+      id: Date.now().toString(), 
+      name, 
+      path: newRepoPath.trim(), 
+      messages: [] 
+    })
+    setNewRepoPath('')
+    setNewRepoName('')
+    setAddingRepo(false)
+  }
   return (
     <aside className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
       <div className="sidebar__header">
@@ -71,11 +93,52 @@ function Sidebar({
               >
                 {ingesting ? '⟳' : '↺'}
               </button>
+              <button
+                className="repo-item__delete"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(repo.id)
+                }}
+                title="Remove repository"
+              >
+                ×
+              </button>
             </button>
             
           ))}
         </nav>
       )}
+
+      {!collapsed && (
+      <>
+        {addingRepo ? (
+          <div className="add-repo-form">
+            <input
+              className="ext-input"
+              placeholder="Folder name (optional)"
+              value={newRepoName}
+              onChange={(e) => setNewRepoName(e.target.value)}
+            />
+            <input
+              className="ext-input"
+              placeholder="/absolute/path/to/repo"
+              value={newRepoPath}
+              onChange={(e) => setNewRepoPath(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddRepo()}
+              autoFocus
+            />
+            <div className="add-repo-actions">
+              <button className="btn btn--sm" onClick={handleAddRepo}>Add</button>
+              <button className="btn btn--sm" onClick={() => setAddingRepo(false)}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button className="add-repo-btn" onClick={() => setAddingRepo(true)}>
+            + Add repository
+          </button>
+        )}
+      </>
+    )}
     </aside>
   )
 }
@@ -226,6 +289,21 @@ export default function App() {
     }
   }
 
+  function handleAddRepo(repo: Repository) {
+    setRepos(prev => [...prev, repo])
+    setActiveRepoId(repo.id)
+  }
+
+  function handleDeleteRepo(id: string) {
+    if (!window.confirm('Remove this repository from the list?')) return
+    setRepos(prev => prev.filter(r => r.id !== id))
+    // if we're deleting the active repo, switch to the first remaining one
+    if (activeRepoId === id) {
+      const remaining = repos.filter(r => r.id !== id)
+      if (remaining.length > 0) setActiveRepoId(remaining[0].id)
+    }
+  }
+
   // Scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -294,15 +372,17 @@ export default function App() {
         collapsed={sidebarCollapsed}
         onSelect={setActiveRepoId}
         onToggle={() => setSidebarCollapsed((v) => !v)}
-        onIngest={() => handleIngest("../../MAPS")}
+        onIngest={(path) => handleIngest(path)}
         ingesting={ingesting}
+        onAddRepo={handleAddRepo}
+        onDelete={handleDeleteRepo}
       />
 
       {/* Main chat area */}
       <main className="chat">
         <header className="chat__header">
           <span className="chat__repo-name">{activeRepo.name}</span>
-          <span className="chat__subtitle">codebase Q&A</span>
+          <span className="chat__subtitle">Folder Q&A</span>
         </header>
 
         <div className="chat__messages">
