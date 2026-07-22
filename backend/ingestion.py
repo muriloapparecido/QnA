@@ -32,7 +32,7 @@ def chunk_file(source: str, chunk_size: int = 40, overlap: int = 20) -> list[dic
     return result
 
 # Walk through repo and chunk files
-def walk_repo(repo_path: str) -> list[dict]:
+def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []) -> list[dict]:
     # returns list of {"text": ..., "start_line": ..., "end_line": ..., "file": ...}
     # calls chunk_file on each valid file
     # Walk through directory
@@ -41,14 +41,14 @@ def walk_repo(repo_path: str) -> list[dict]:
         # root = current folder path (string)
         # dirs = list of subfolder names in root
         # files = list of file names in root
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        dirs[:] = [d for d in dirs if d not in set(skip_dirs)]
         # if "file" in root: 
         #     print(f"root: {root}, dirs: {dirs}, files: {files}")
         for file in files:
-            print(f"Checking: {file}, endswith check: {file.endswith(tuple(SUPPORTED_EXTENSIONS))}")
+            # print(f"Checking: {file}, endswith check: {file.endswith(tuple(SUPPORTED_EXTENSIONS))}")
 
             # skip if file extension is not supported
-            if not file.endswith(tuple(SUPPORTED_EXTENSIONS)):
+            if not file.endswith(tuple(supported_extensions)):
                 continue
             
             # read file
@@ -72,9 +72,9 @@ def walk_repo(repo_path: str) -> list[dict]:
                 data.append(chunk)
     return data 
 
-def ingest_repo(repo_path: str):
+def ingest_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []):
     # Ingest data
-    all_chunks = walk_repo(repo_path)
+    all_chunks = walk_repo(repo_path, supported_extensions, skip_dirs)
     docs = [chunk["text"] for chunk in all_chunks]
     ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
     metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]

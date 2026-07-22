@@ -77,11 +77,15 @@ app.add_middleware(
 
 class IngestRequest(BaseModel): 
     repo_path: str
+    supported_extensions: list[str] = [".ts", ".tsx", ".java", ".py", ".js", ".md"]
+    skip_dirs: list[str] = ["node_modules", ".git", "build", "dist", "frontend_license", "venv", "target", "docs", ".vscode", ".venv"]
+
     
 @app.post("/ingest")
 def ingest(request:IngestRequest):
-    result = ingest_repo(request.repo_path)
-    return result
+    count = ingest_repo(request.repo_path, request.supported_extensions, request.skip_dirs)
+
+    return count
 
 # request body
 class QuestionRequest(BaseModel):

@@ -99,67 +99,92 @@ function ChatMessage({ message }: { message: Message }) {
 
 function SettingsPanel({
   open,
-  ignoredExtensions,
+  supportedExtensions, 
+  skipDirs,
   onToggle,
-  onExtensionsChange,
+  onSupportedExtensionsChange,
+  onSkipDirsChange,
 }: {
   open: boolean
-  ignoredExtensions: string[]
+  supportedExtensions: string[]
+  skipDirs: string[]
   onToggle: () => void
-  onExtensionsChange: (exts: string[]) => void
+  onSupportedExtensionsChange: (exts: string[]) => void
+  onSkipDirsChange: (dirs: string[]) => void
 }) {
-  const [draft, setDraft] = useState('')
+  const [extDraft, setExtDraft] = useState('')
+  const [dirDraft, setDirDraft] = useState('')
 
   function addExtension() {
-    const cleaned = draft.trim().replace(/^\./, '')
-    if (!cleaned || ignoredExtensions.includes(cleaned)) return
-    onExtensionsChange([...ignoredExtensions, cleaned])
-    setDraft('')
+    const cleaned = extDraft.trim().replace(/^\./, '')
+    if (!cleaned || supportedExtensions.includes(cleaned)) return
+    onSupportedExtensionsChange([...supportedExtensions, cleaned])
+    setExtDraft('')
   }
 
-  function removeExtension(ext: string) {
-    onExtensionsChange(ignoredExtensions.filter((e) => e !== ext))
+  function addDir() {
+    const cleaned = dirDraft.trim()
+    if (!cleaned || skipDirs.includes(cleaned)) return
+    onSkipDirsChange([...skipDirs, cleaned])
+    setDirDraft('')
   }
 
   return (
     <aside className={`settings-panel ${open ? 'settings-panel--open' : ''}`}>
       <div className="settings-panel__header">
-        <button className="icon-btn" onClick={onToggle} title="Settings">
-          ⚙
-        </button>
+        <button className="icon-btn" onClick={onToggle} title="Settings">⚙</button>
         {open && <span className="settings-panel__title">Settings</span>}
       </div>
 
       {open && (
         <div className="settings-panel__body">
-          <section className="settings-section">
-            <h3 className="settings-section__heading">Ignored extensions</h3>
-            <p className="settings-section__hint">Files with these extensions won't be searched.</p>
 
+          <section className="settings-section">
+            <h3 className="settings-section__heading">Supported extensions</h3>
+            <p className="settings-section__hint">Only files with these extensions will be ingested.</p>
             <div className="ext-input-row">
               <input
                 className="ext-input"
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                value={extDraft}
+                onChange={(e) => setExtDraft(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && addExtension()}
-                placeholder=".svg"
+                placeholder=".ts"
               />
-              <button className="btn btn--sm" onClick={addExtension}>
-                Add
-              </button>
+              <button className="btn btn--sm" onClick={addExtension}>Add</button>
             </div>
-
             <ul className="ext-list">
-              {ignoredExtensions.map((ext) => (
+              {supportedExtensions.map((ext) => (
                 <li key={ext} className="ext-tag">
-                  .{ext}
-                  <button className="ext-tag__remove" onClick={() => removeExtension(ext)}>
-                    ×
-                  </button>
+                  {ext}
+                  <button className="ext-tag__remove" onClick={() => onSupportedExtensionsChange(supportedExtensions.filter((e) => e !== ext))}>×</button>
                 </li>
               ))}
             </ul>
           </section>
+
+          <section className="settings-section">
+            <h3 className="settings-section__heading">Skipped directories</h3>
+            <p className="settings-section__hint">These folders will be ignored during ingestion.</p>
+            <div className="ext-input-row">
+              <input
+                className="ext-input"
+                value={dirDraft}
+                onChange={(e) => setDirDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addDir()}
+                placeholder="node_modules"
+              />
+              <button className="btn btn--sm" onClick={addDir}>Add</button>
+            </div>
+            <ul className="ext-list">
+              {skipDirs.map((dir) => (
+                <li key={dir} className="ext-tag">
+                  {dir}
+                  <button className="ext-tag__remove" onClick={() => onSkipDirsChange(skipDirs.filter((d) => d !== dir))}>×</button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
         </div>
       )}
     </aside>
@@ -173,7 +198,8 @@ export default function App() {
   const [activeRepoId, setActiveRepoId] = useState<string>(INITIAL_REPOS[0].id)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [ignoredExtensions, setIgnoredExtensions] = useState<string[]>(['svg', 'png', 'jpg', 'webp']);
+  const [supportedExtensions, setSupportedExtensions] = useState<string[]>(['.ts', '.tsx', '.java', '.py', '.js', '.md'])
+  const [skipDirs, setSkipDirs] = useState<string[]>(['node_modules', '.git', 'build', 'dist', 'frontend_license', 'venv', 'target', 'docs', '.vscode', '.venv'])
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,7 +215,11 @@ export default function App() {
       await fetch('http://localhost:8000/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_path: repoPath })
+        body: JSON.stringify({ 
+          repo_path: repoPath , 
+          supported_extension: supportedExtensions, 
+          skip_dirs: skipDirs, 
+        })
       })
     } finally {
       setIngesting(false)
@@ -232,7 +262,8 @@ export default function App() {
         body: JSON.stringify({
           question,
           repo_path: activeRepo.path,
-          ignored_extensions: ignoredExtensions,
+          ignored_extensions: supportedExtensions,
+          skip_dirs: skipDirs, 
         }),
       })
 
@@ -334,9 +365,11 @@ export default function App() {
       {/* Right settings panel */}
       <SettingsPanel
         open={settingsOpen}
-        ignoredExtensions={ignoredExtensions}
+        supportedExtensions={supportedExtensions}
+        skipDirs={skipDirs}
         onToggle={() => setSettingsOpen((v) => !v)}
-        onExtensionsChange={setIgnoredExtensions}
+        onSupportedExtensionsChange={setSupportedExtensions}
+        onSkipDirsChange={setSkipDirs}
       />
     </div>
   )
