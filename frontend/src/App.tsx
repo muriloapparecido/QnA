@@ -51,6 +51,7 @@ export default function App() {
   function handleAddRepo(repo: Repository) {
     setRepos((prev) => [...prev, repo]);
     setActiveRepoId(repo.id);
+    handleIngest(repo.path); 
   }
 
   function handleDeleteRepo(id: string) {
