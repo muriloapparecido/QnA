@@ -1,10 +1,10 @@
 const BASE = 'http://localhost:8000'
 
-export async function askQuestion(question: string) {
+export async function askQuestion(question: string, repoPath:string) {
     const response = await fetch(`${BASE}/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, repo_path: repoPath }),
     });
 
     if (!response.ok) throw new Error(`Server error: ${response.status}`);

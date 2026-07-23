@@ -35,6 +35,7 @@ def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: l
     # returns list of {"text": ..., "start_line": ..., "end_line": ..., "file": ...}
     # calls chunk_file on each valid file
     # Walk through directory
+    repo_path = os.path.abspath(repo_path)
     data = []
     for root, dirs, files in os.walk(repo_path):
         # root = current folder path (string)
@@ -55,19 +56,20 @@ def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: l
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     source = f.read()
-                    print(f"Read {len(source)} chars from {full_path}") 
+                    # print(f"Read {len(source)} chars from {full_path}") 
 
             except (UnicodeDecodeError, PermissionError) as e:
-                print(f"SKIPPED: {full_path} - {e}")
+                # print(f"SKIPPED: {full_path} - {e}")
                 continue
             
             # chunk file
             chunks = chunk_file(source)
-            print(f"Chunked {full_path} into {len(chunks)} chunks")
+            # print(f"Chunked {full_path} into {len(chunks)} chunks")
 
 
             for chunk in chunks:
                 chunk["file"] = full_path  # add file path to each chunk
+                chunk["repo"] = repo_path
                 data.append(chunk)
     return data 
 
@@ -85,7 +87,7 @@ def ingest_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs:
     
     docs = [chunk["text"] for chunk in all_chunks]
     ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
-    metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
+    metadata = [{"file": chunk["file"], "repo": chunk["repo"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
 
     # Upsert to ChromaDB
     BATCH_SIZE = 500
@@ -106,17 +108,19 @@ def ingest_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs:
     return {"chunks_ingested": len(docs)}
 
 def ingest_repo_stream(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []):
+    repo_path = os.path.abspath(repo_path)  
     all_chunks = walk_repo(repo_path, supported_extensions, skip_dirs)
     total = len(all_chunks)
     
     if total == 0:
-        return {"chunks_ingested": 0}
+        yield {"status": "error", "message": "No files found. Check your path and supported extensions."}
+        return
 
     collection.delete(where={"file": {"$contains": repo_path}})
 
     docs = [chunk["text"] for chunk in all_chunks]
     ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
-    metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
+    metadata = [{"file": chunk["file"], "repo": chunk["repo"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
 
     BATCH_SIZE = 500
     for i in range(0, total, BATCH_SIZE):

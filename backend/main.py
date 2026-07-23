@@ -24,11 +24,14 @@ def extract_keywords(text: str) -> list[str]:
     words = text.split()
     return [w for w in words if is_code_identifier(w)]
 
-def keyword_search(keywords: list[str], collection) -> list[dict]: 
+def keyword_search(keywords: list[str], collection, repo_path: str = "") -> list[dict]: 
     if not keywords:
         return []
     
-    all_chunks = collection.get(limit=3000)
+    all_chunks = collection.get(
+        limit=3000,  
+        where={"repo": {"$eq": repo_path}} if repo_path else None
+    )
     matches = []
     
     for i, doc in enumerate(all_chunks['documents']):
@@ -101,6 +104,7 @@ def ingest_stream(request: IngestRequest):
 # request body
 class QuestionRequest(BaseModel):
     question: str
+    repo_path: str = ""
 
 
 # answer user's query
@@ -125,13 +129,14 @@ def ask(request: QuestionRequest) :
     # find key words from input and check if code identifier
     keywords_for_search = extract_keywords(real_input_text)
     # find key word matches in documents from ingestion
-    matched_keywords = keyword_search(keywords_for_search, collection)
+    matched_keywords = keyword_search(keywords_for_search, collection, request.repo_path)
     
     # Semantic search
     sources = collection.query(
         query_texts=[real_input_text],
         n_results=20,
-        where={"file": {"$not_contains": "README"}}     # Omit README from collection
+        where={"repo": {"$eq": request.repo_path}} if request.repo_path else {"file": {"$not_contains": "README"}}
+     # Omit README from collection and get chunks from path
     )
     
     '''

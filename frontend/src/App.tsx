@@ -10,7 +10,7 @@ import { IngestPopup } from "./components/Ingest/Ingest";
 
 //  Mock data (replace with real data later)
 const INITIAL_REPOS: Repository[] = [
-  { id: "maps", name: "MAPS", path: "../../MAPS", messages: [] },
+  { id: "maps", name: "MAPS", path: "/Users/muriloapparecido/projects/MAPS", messages: [] },
 ];
 
 //  Main App
@@ -93,7 +93,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const data = await askQuestion(question); 
+      const data = await askQuestion(question, activeRepo.path); 
 
       const assistantMsg: Message = {
         id: Date.now() + 1,
