@@ -14,7 +14,7 @@ export function Sidebar({
   onDelete,
 }: {
   repos: Repository[]
-  activeId: string
+  activeId: string | null
   collapsed: boolean
   onSelect: (id: string) => void
   onToggle: () => void

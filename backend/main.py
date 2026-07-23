@@ -6,7 +6,7 @@ from openai import OpenAI
 import os
 from fastapi import FastAPI
 from pydantic import BaseModel
-from ingestion import ingest_repo, collection, ingest_repo_stream
+from ingestion import collection, ingest_repo_stream
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import json
@@ -86,12 +86,6 @@ class IngestRequest(BaseModel):
     skip_dirs: list[str] = ["node_modules", ".git", "build", "dist", "frontend_license", "venv", "target", "docs", ".vscode", ".venv"]
 
     
-@app.post("/ingest")
-def ingest(request:IngestRequest):
-    count = ingest_repo(request.repo_path, request.supported_extensions, request.skip_dirs)
-
-    return count
-
 @app.post("/ingest-stream")
 def ingest_stream(request: IngestRequest):
     def generate():

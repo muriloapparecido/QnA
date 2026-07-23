@@ -7,6 +7,11 @@ export async function askQuestion(question: string, repoPath:string) {
         body: JSON.stringify({ question, repo_path: repoPath }),
     });
 
+    if (response.status === 429 || response.status === 500) {
+        throw new Error('QUOTA_EXCEEDED')
+    }
+
+
     if (!response.ok) throw new Error(`Server error: ${response.status}`);
     return response.json(); 
 

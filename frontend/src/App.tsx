@@ -9,14 +9,12 @@ import { useIngest } from "./hooks/useIngest";
 import { IngestPopup } from "./components/Ingest/Ingest";
 
 //  Mock data (replace with real data later)
-const INITIAL_REPOS: Repository[] = [
-  { id: "maps", name: "MAPS", path: "/Users/muriloapparecido/projects/MAPS", messages: [] },
-];
+const INITIAL_REPOS: Repository[] = [];
 
 //  Main App
 export default function App() {
   const [repos, setRepos] = useState<Repository[]>(INITIAL_REPOS);
-  const [activeRepoId, setActiveRepoId] = useState<string>(INITIAL_REPOS[0].id);
+  const [activeRepoId, setActiveRepoId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [supportedExtensions, setSupportedExtensions] = useState<string[]>([
@@ -43,15 +41,19 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const activeRepo = repos.find((r) => r.id === activeRepoId)!;
-  const { ingesting, ingestProgress, ingestError, handleIngest, handleCancelIngest } = useIngest(supportedExtensions, skipDirs) 
-
-  
+  const activeRepo = repos.find((r) => r.id === activeRepoId);
+  const {
+    ingesting,
+    ingestProgress,
+    ingestError,
+    handleIngest,
+    handleCancelIngest,
+  } = useIngest(supportedExtensions, skipDirs);
 
   function handleAddRepo(repo: Repository) {
     setRepos((prev) => [...prev, repo]);
     setActiveRepoId(repo.id);
-    handleIngest(repo.path); 
+    handleIngest(repo.path);
   }
 
   function handleDeleteRepo(id: string) {
@@ -67,9 +69,9 @@ export default function App() {
   // Scroll to bottom when messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [activeRepo.messages]);
+  }, [activeRepo?.messages]);
 
-  function addMessage(repoId: string, message: Message) {
+  function addMessage(repoId: string | null, message: Message) {
     setRepos((prev) =>
       prev.map((r) =>
         r.id === repoId ? { ...r, messages: [...r.messages, message] } : r,
@@ -94,7 +96,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const data = await askQuestion(question, activeRepo.path); 
+      const data = await askQuestion(question, activeRepo?.path ?? '');
 
       const assistantMsg: Message = {
         id: Date.now() + 1,
@@ -104,7 +106,12 @@ export default function App() {
       };
       addMessage(activeRepoId, assistantMsg);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
+      const msg = err instanceof Error ? err.message : "Request failed";
+      if (msg === "QUOTA_EXCEEDED") {
+        setError("Demo quota reached — watch the demo video below instead.");
+      } else {
+        setError(err instanceof Error ? err.message : "Request failed");
+      }
     } finally {
       setLoading(false);
     }
@@ -136,71 +143,93 @@ export default function App() {
 
       {/* Main chat area */}
       <main className="chat">
-        <header className="chat__header">
-          <span className="chat__repo-name">{activeRepo.name}</span>
-          <span className="chat__subtitle">Folder Q&A</span>
-        </header>
+        {!activeRepo ? (
+          <div className="chat__empty" style={{ margin: "auto" }}>
+            <p>Add a repository from the sidebar to get started.</p>
+          </div>
+        ) : (
+          <>
+            <header className="chat__header">
+              <span className="chat__repo-name">{activeRepo?.name}</span>
+              <span className="chat__subtitle">Folder Q&A</span>
+            </header>
 
-        <div className="chat__messages">
-          {activeRepo.messages.length === 0 && (
-            <div className="chat__empty">
-              <p>
-                Ask anything about <strong>{activeRepo.name}</strong>.
-              </p>
-              <p className="chat__empty-hint">
-                Try: "where is the add row button?" or "how does saving work?"
-              </p>
+            <div className="chat__messages">
+              {activeRepo?.messages.length === 0 && (
+                <div className="chat__empty">
+                  <p>
+                    Ask anything about <strong>{activeRepo.name}</strong>.
+                  </p>
+                  <p className="chat__empty-hint">
+                    Try: "where is the add row button?" or "how does saving
+                    work?"
+                  </p>
+                </div>
+              )}
+
+              {activeRepo?.messages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} />
+              ))}
+
+              {loading && (
+                <div className="message message--assistant">
+                  <div className="message__bubble message__bubble--loading">
+                    <span className="loading-dot" />
+                    <span className="loading-dot" />
+                    <span className="loading-dot" />
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="chat__error">
+                  {error}
+                  {error.includes("quota") && (
+                    <a
+                      href="YOUR_DEMO_VIDEO_URL"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Watch demo →
+                    </a>
+                  )}
+                </div>
+              )}
+
+              <div ref={bottomRef} />
             </div>
-          )}
 
-          {activeRepo.messages.map((msg) => (
-            <ChatMessage key={msg.id} message={msg} />
-          ))}
-
-          {loading && (
-            <div className="message message--assistant">
-              <div className="message__bubble message__bubble--loading">
-                <span className="loading-dot" />
-                <span className="loading-dot" />
-                <span className="loading-dot" />
-              </div>
-            </div>
-          )}
-
-          {error && <div className="chat__error">{error}</div>}
-
-          <div ref={bottomRef} />
-        </div>
-
-        <form
-          className="chat__input-row"
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmit();
-          }}
-        >
-          <textarea
-            className="chat__textarea"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
+            <form
+              className="chat__input-row"
+              onSubmit={(e) => {
                 e.preventDefault();
                 handleSubmit();
-              }
-            }}
-            placeholder="Ask a question about the codebase… (Enter to send, Shift+Enter for newline)"
-            rows={2}
-            disabled={loading}
-          />
-          <button
-            type="submit"
-            className="btn btn--primary"
-            disabled={loading || input.trim() === ""}
-          >
-            {loading ? "…" : "Ask"}
-          </button>
-        </form>
+              }}
+            >
+              <textarea
+                className="chat__textarea"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+                placeholder="Ask a question about the codebase… (Enter to send, Shift+Enter for newline)"
+                rows={2}
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                className="btn btn--primary"
+                disabled={loading || input.trim() === "" || !activeRepo}
+              >
+                {loading ? "…" : "Ask"}
+              </button>
+            </form>
+          </>
+        )}
       </main>
 
       {/* Right settings panel */}
