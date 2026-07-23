@@ -4,6 +4,9 @@ import type { Message, Repository } from "./types";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { ChatMessage } from "./components/ChatMessage/ChatMessage";
 import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
+import { askQuestion } from "./api";
+import { useIngest } from "./hooks/useIngest";
+import { IngestPopup } from "./components/Ingest/Ingest";
 
 //  Mock data (replace with real data later)
 const INITIAL_REPOS: Repository[] = [
@@ -39,76 +42,11 @@ export default function App() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [ingesting, setIngesting] = useState(false);
-  const [ingestProgress, setIngestProgress] = useState<{
-    ingested: number;
-    total: number;
-    percent: number;
-  } | null>(null);
-  const [ingestError, setIngestError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const activeRepo = repos.find((r) => r.id === activeRepoId)!;
+  const { ingesting, ingestProgress, ingestError, handleIngest, handleCancelIngest } = useIngest(supportedExtensions, skipDirs) 
 
-  const ingestAbortRef = useRef<AbortController | null>(null);
-
-  async function handleIngest(repoPath: string) {
-    setIngesting(true);
-    setIngestProgress({ ingested: 0, total: 0, percent: 0 });
-    setIngestError(null);
-
-    const controller = new AbortController();
-    ingestAbortRef.current = controller;
-
-    try {
-      const response = await fetch("http://localhost:8000/ingest-stream", {
-        signal: controller.signal,
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repo_path: repoPath,
-          supported_extensions: supportedExtensions,
-          skip_dirs: skipDirs,
-        }),
-      });
-
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const text = decoder.decode(value);
-        const lines = text.split("\n").filter((l) => l.startsWith("data: "));
-
-        for (const line of lines) {
-          const data = JSON.parse(line.slice(6));
-          if (data.status === "progress") {
-            setIngestProgress(data);
-          } else if (data.status === "done") {
-            setIngesting(false);
-            setIngestProgress(null);
-          } else if (data.status === "error") {
-            setIngestError(data.message);
-            setIngesting(false);
-          }
-        }
-      }
-    } catch (err: any) {
-      if (err.name !== "AbortError") {
-        setIngestError("Ingestion failed. Check the server.");
-      }
-      setIngesting(false);
-      setIngestProgress(null);
-    }
-  }
-
-  function handleCancelIngest() {
-    ingestAbortRef.current?.abort();
-    setIngesting(false);
-    setIngestProgress(null);
-    setIngestError(null) 
-  }
+  
 
   function handleAddRepo(repo: Repository) {
     setRepos((prev) => [...prev, repo]);
@@ -155,20 +93,7 @@ export default function App() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8000/ask", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          repo_path: activeRepo.path,
-          ignored_extensions: supportedExtensions,
-          skip_dirs: skipDirs,
-        }),
-      });
-
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-      const data = await response.json();
+      const data = await askQuestion(question); 
 
       const assistantMsg: Message = {
         id: Date.now() + 1,
@@ -188,44 +113,12 @@ export default function App() {
     <div className="layout">
       {/* Ingestion popup */}
       {(ingesting && ingestProgress) || ingestError ? (
-        <div className="ingest-overlay">
-          <div className="ingest-modal">
-            <h3>
-              {ingesting ? "Ingesting repository..." : "Ingestion failed"}
-            </h3>
-
-            {ingestProgress && (
-              <>
-                <div className="progress-bar">
-                  <div
-                    className="progress-bar__fill"
-                    style={{ width: `${ingestProgress.percent}%` }}
-                  />
-                </div>
-                <p className="progress-label">
-                  {ingestProgress.ingested} / {ingestProgress.total} chunks (
-                  {ingestProgress.percent}%)
-                </p>
-                {ingestProgress.percent < 30 && ingestProgress.total > 1000 && (
-                  <p className="progress-hint">
-                    Taking too long? Try restricting supported extensions or
-                    adding folders to skip.
-                  </p>
-                )}
-              </>
-            )}
-
-            {ingestError && (
-              <p className="progress-hint" style={{ color: "var(--error)" }}>
-                {ingestError}
-              </p>
-            )}
-
-            <button className="btn btn--sm" onClick={handleCancelIngest}>
-              {ingesting ? "Cancel" : "Dismiss"}
-            </button>
-          </div>
-        </div>
+        <IngestPopup
+          ingesting={ingesting}
+          ingestProgress={ingestProgress}
+          ingestError={ingestError}
+          onCancel={handleCancelIngest}
+        />
       ) : null}
       {/* Left sidebar — repo list */}
       <Sidebar

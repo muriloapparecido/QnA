@@ -1,0 +1,27 @@
+const BASE = 'http://localhost:8000'
+
+export async function askQuestion(question: string) {
+    const response = await fetch(`${BASE}/ask`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+    });
+
+    if (!response.ok) throw new Error(`Server error: ${response.status}`);
+    return response.json(); 
+
+}
+
+export async function ingestStream( repoPath: string, supportedExtensions: string[], skipDirs: string [], signal: AbortSignal) {
+    const response = await fetch(`${BASE}/ingest-stream`, {
+        signal,
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            repo_path: repoPath,
+            supported_extensions: supportedExtensions,
+            skip_dirs: skipDirs,
+        }),
+    });
+    return response; 
+}

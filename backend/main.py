@@ -106,7 +106,6 @@ class QuestionRequest(BaseModel):
 # answer user's query
 @app.post("/ask")
 def ask(request: QuestionRequest) :
-    chat_completion = None
     input_text = request.question
     real_input_text = client.chat.completions.create(
         messages=[
@@ -174,9 +173,3 @@ def ask(request: QuestionRequest) :
     
     # Agent response
     return {"Response": chat_completion.choices[0].message.content, "Source": source}
-
-    # print(chat_completion.choices[0].message.content)
-    
-    # print("Any further questions? (Type 'exit' or 'quit' to stop.)")
-    # if input_text.lower() in {"exit", "quit"}:
-    #     break
