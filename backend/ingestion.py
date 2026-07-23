@@ -74,6 +74,15 @@ def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: l
 def ingest_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []):
     # Ingest data
     all_chunks = walk_repo(repo_path, supported_extensions, skip_dirs)
+    total = len(all_chunks)
+    
+    if total == 0:
+        yield {"status": "error", "message": "No files found. Check your path and supported extensions."}
+        return
+
+    # Clear existing data before re-ingesting
+    collection.delete(where={"file": {"$contains": repo_path}})
+    
     docs = [chunk["text"] for chunk in all_chunks]
     ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
     metadata = [{"file": chunk["file"], "start_line": chunk["start_line"], "end_line": chunk["end_line"]} for chunk in all_chunks]
@@ -81,29 +90,29 @@ def ingest_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs:
     # Upsert to ChromaDB
     BATCH_SIZE = 500
 
-    print(f"Total chunks to upsert: {len(docs)}")
+    # print(f"Total chunks to upsert: {len(docs)}")
     for i in range(0, len(docs), BATCH_SIZE):
-        print(f"Upserting batch {i} to {i+BATCH_SIZE}")
+        # print(f"Upserting batch {i} to {i+BATCH_SIZE}")
         try: 
             collection.upsert(
                 ids=ids[i:i+BATCH_SIZE],
                 metadatas=metadata[i:i+BATCH_SIZE],
                 documents=docs[i:i+BATCH_SIZE]
             )
-            print(f"Batch {i} done")
+            # print(f"Batch {i} done")
         except Exception as e: 
             print(f"FAILED bat {i}: {e}")
-    print(collection.count())
+    # print(collection.count())
     return {"chunks_ingested": len(docs)}
 
 def ingest_repo_stream(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []):
-    """Generator version that yields progress dicts instead of returning at the end."""
     all_chunks = walk_repo(repo_path, supported_extensions, skip_dirs)
     total = len(all_chunks)
     
     if total == 0:
-        yield {"status": "error", "message": "No files found. Check your path and supported extensions."}
-        return
+        return {"chunks_ingested": 0}
+
+    collection.delete(where={"file": {"$contains": repo_path}})
 
     docs = [chunk["text"] for chunk in all_chunks]
     ids = [f"{chunk['file']}:{chunk['start_line']}-{chunk['end_line']}" for chunk in all_chunks]
