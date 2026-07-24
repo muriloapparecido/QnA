@@ -2,7 +2,7 @@
 
 A local RAG (Retrieval-Augmented Generation) system that lets you ask natural language questions about any codebase and get cited, file specific answers.
 
-[![Demo Video](https://img.shields.io/badge/Watch%20Demo-Loom-purple?style=for-the-badge&logo=loom)]([https://www.loom.com/share/2d3b106d83ac405db252358e0ffab892](https://www.loom.com/share/1d0712dcf6334a5aa8ef4cd294c0c339))
+[![Demo Video](https://img.shields.io/badge/Watch%20Demo-Loom-purple?style=for-the-badge&logo=loom)](https://www.loom.com/share/1d0712dcf6334a5aa8ef4cd294c0c339)
 <div>
     <a href="https://www.loom.com/share/1d0712dcf6334a5aa8ef4cd294c0c339">
       <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/1d0712dcf6334a5aa8ef4cd294c0c339-9c14c55b51c064b6-full-play.gif#t=0.1">
