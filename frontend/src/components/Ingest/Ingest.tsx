@@ -13,7 +13,7 @@ export function IngestPopup({ ingesting, ingestProgress, ingestError, onCancel }
       <div className="ingest-modal">
         <h3>{ingesting ? 'Ingesting repository...' : 'Ingestion failed'}</h3>
 
-        {ingestProgress && (
+        {ingestProgress && ingestProgress.total > 0 &&(
           <>
             <div className="progress-bar">
               <div
