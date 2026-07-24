@@ -8,7 +8,6 @@ import { askQuestion } from "./api";
 import { useIngest } from "./hooks/useIngest";
 import { IngestPopup } from "./components/Ingest/Ingest";
 
-//  Mock data (replace with real data later)
 const INITIAL_REPOS: Repository[] = [];
 
 //  Main App

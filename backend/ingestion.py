@@ -32,8 +32,6 @@ def chunk_file(source: str, chunk_size: int = 40, overlap: int = 20) -> list[dic
 
 # Walk through repo and chunk files
 def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: list[str] = []) -> list[dict]:
-    # returns list of {"text": ..., "start_line": ..., "end_line": ..., "file": ...}
-    # calls chunk_file on each valid file
     # Walk through directory
     repo_path = os.path.abspath(repo_path)
     data = []
@@ -42,10 +40,9 @@ def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: l
         # dirs = list of subfolder names in root
         # files = list of file names in root
         dirs[:] = [d for d in dirs if d not in set(skip_dirs)]
-        # if "file" in root: 
-        #     print(f"root: {root}, dirs: {dirs}, files: {files}")
+
         for file in files:
-            # print(f"Checking: {file}, endswith check: {file.endswith(tuple(SUPPORTED_EXTENSIONS))}")
+            
 
             # skip if file extension is not supported
             if not file.endswith(tuple(supported_extensions)):
@@ -56,20 +53,17 @@ def walk_repo(repo_path: str, supported_extensions: list[str] = [], skip_dirs: l
             try:
                 with open(full_path, "r", encoding="utf-8") as f:
                     source = f.read()
-                    # print(f"Read {len(source)} chars from {full_path}") 
 
             except (UnicodeDecodeError, PermissionError) as e:
-                # print(f"SKIPPED: {full_path} - {e}")
                 continue
             
             # chunk file
             chunks = chunk_file(source)
-            # print(f"Chunked {full_path} into {len(chunks)} chunks")
 
 
             for chunk in chunks:
                 chunk["file"] = full_path  # add file path to each chunk
-                chunk["repo"] = repo_path
+                chunk["repo"] = repo_path  # add repository path to each chunk
                 data.append(chunk)
     return data 
 

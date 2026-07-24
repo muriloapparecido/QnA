@@ -130,7 +130,6 @@ def ask(request: QuestionRequest) :
         query_texts=[real_input_text],
         n_results=20,
         where={"repo": {"$eq": request.repo_path}} if request.repo_path else {"file": {"$not_contains": "README"}}
-     # Omit README from collection and get chunks from path
     )
     
     '''
@@ -139,14 +138,6 @@ def ask(request: QuestionRequest) :
     display results in reverse order so highest scores first
     ''' 
     results = merge_matches_and_chunks(matched_keywords, sources)    
-
-    # print("All retrieved chunks:")
-    # for i in range(len(sources['metadatas'][0])):
-    #     print(sources['metadatas'][0][i])
-        
-    # print(f"Rewritten query: {real_input_text}")
-    # print(f"Top chunk: {sources['metadatas'][0][0]}")
-    
     
     # Format result
     source = ""
